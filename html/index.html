@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Short UrL</title>
+</head>
+<body>
+    <div>
+        <p>短链：长链</p>
+        {{range $key,$value := .}}
+        <p>{{$key}} : {{$value}}</p>
+        {{else}}
+        <p>Story is empty.</p>
+    </div>
+{{end}}
+</body>
+</html>

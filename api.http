@@ -1,0 +1,30 @@
+POST http://localhost:9009/put
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="url"
+
+http://www.baidu.com
+--WebAppBoundary--
+
+###
+POST http://localhost:9009/put
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="url"
+
+https://www.kxjun.top/
+--WebAppBoundary--
+
+###
+POST http://localhost:9009/get
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="key"
+
+0
+--WebAppBoundary--
+
+###
