@@ -9,6 +9,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
 	"log"
@@ -16,9 +17,21 @@ import (
 	"short_url/store"
 )
 
-var urlStore = store.NewURLStore()
+var (
+	port = flag.String("port", ":9009", "http listen port")
+	file = flag.String("file", "./store.gob", "data store filename")
+	host = flag.String("host", "127.0.0.1", "hostname")
+)
+
+//var urlStore = store.NewURLStore("store.gob")
+var urlStore *store.URLStore
 
 type myHandleFunc func(http.ResponseWriter, *http.Request)
+
+func init()  {
+	flag.Parse()
+	urlStore = store.NewURLStore(*file)
+}
 
 func logPanics(m myHandleFunc) myHandleFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -31,7 +44,7 @@ func logPanics(m myHandleFunc) myHandleFunc {
 	}
 }
 
-func main()  {
+func main() {
 	// 首页
 	http.HandleFunc("/index", Index)
 
@@ -47,7 +60,7 @@ func main()  {
 
 	http.HandleFunc("/delete", logPanics(Delete))
 
-	if err := http.ListenAndServe(":9009", nil); err != nil {
+	if err := http.ListenAndServe(*port, nil); err != nil {
 		// fmt.Printf("http ListenAndServe err[%v]", err)
 		panic(err)
 	}
@@ -101,11 +114,11 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	urlStore.Delete(key)
-	w.Header().Set("Content-Type","application/json")
+	w.Header().Set("Content-Type", "application/json")
 	//ret, _ := json.Marshal(result)
 	//w.Write(ret)
 	// 重定向刷新回去
-	http.Redirect(w, r, "127.0.0.1:9009", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, fmt.Sprintf("%s%s", *host, *port), http.StatusTemporaryRedirect)
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +139,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Redirect(w http.ResponseWriter, r *http.Request)  {
+func Redirect(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Path[1:]
 	if key == "" {
 		return
