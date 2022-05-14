@@ -10,6 +10,7 @@ package store
 
 import (
 	"encoding/gob"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -32,13 +33,16 @@ type URLStore struct {
 }
 
 // NewURLStore 初始化URLStore
-func NewURLStore(filename string) *URLStore {
+func NewURLStore(fileName string) *URLStore {
 	once.Do(func() {
 		urlStore = new(URLStore)
 		urlStore.urls = make(map[string]string)
 		urlStore.record = make(chan record, recordQueueMaxLength)
+		if err := urlStore.load(fileName); err != nil {
+			panic(fmt.Sprintf("NewURLStore fileName[%s] failed err: [%v]", fileName, err))
+		}
+		go urlStore.saveLoop(fileName)
 	})
-	//err := urlStore
 	return urlStore
 }
 
@@ -106,8 +110,7 @@ func (s *URLStore) load(fileName string) error {
 	b := gob.NewDecoder(f)
 	for err == nil {
 		r := record{}
-		err = b.Decode(&r)
-		if err != nil {
+		if err = b.Decode(&r); err == nil {
 			s.Set(r.Key, r.URL)
 		}
 	}
@@ -115,6 +118,7 @@ func (s *URLStore) load(fileName string) error {
 	if err == io.EOF {
 		return nil
 	}
+
 	return err
 }
 
@@ -122,14 +126,14 @@ func (s *URLStore) load(fileName string) error {
 func (s *URLStore) saveLoop(fileName string) {
 	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		log.Fatal("saveLoop OpenFile[%s] err[%v]", fileName, err)
+		log.Fatalf("saveLoop OpenFile[%s] err[%v]", fileName, err)
 		return
 	}
 	defer f.Close()
 	e := gob.NewEncoder(f)
 	for {
 		// 从通道里拉数据
-		r := s.record
+		r := <- s.record
 		if err = e.Encode(r); err != nil {
 			log.Printf("saveLoop saving to URLStore err: %v \n", err)
 		}
