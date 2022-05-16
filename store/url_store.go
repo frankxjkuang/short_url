@@ -133,9 +133,18 @@ func (s *URLStore) saveLoop(fileName string) {
 	e := gob.NewEncoder(f)
 	for {
 		// 从通道里拉数据
-		r := <- s.record
+		r := <-s.record
+		if r.Key == "" && r.URL == "" {
+			continue
+		}
+		log.Printf("get record [%s:%s] \n", r.Key, r.URL)
 		if err = e.Encode(r); err != nil {
 			log.Printf("saveLoop saving to URLStore err: %v \n", err)
 		}
 	}
+}
+
+// Close 关闭chan
+func (s *URLStore) Close() {
+	close(s.record)
 }
