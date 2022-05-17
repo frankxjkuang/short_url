@@ -9,7 +9,7 @@
 package store
 
 import (
-	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -107,7 +107,7 @@ func (s *URLStore) load(fileName string) error {
 		return err
 	}
 	defer f.Close()
-	b := gob.NewDecoder(f)
+	b := json.NewDecoder(f)
 	for err == nil {
 		r := record{}
 		if err = b.Decode(&r); err == nil {
@@ -130,7 +130,7 @@ func (s *URLStore) saveLoop(fileName string) {
 		return
 	}
 	defer f.Close()
-	e := gob.NewEncoder(f)
+	e := json.NewEncoder(f)
 	for {
 		// 从通道里拉数据
 		r := <-s.record

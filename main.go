@@ -24,7 +24,7 @@ import (
 
 var (
 	port = flag.String("port", ":9009", "http listen port")
-	file = flag.String("file", "store.gob", "data store filename")
+	file = flag.String("file", "store.json", "data store filename")
 	host = flag.String("host", "127.0.0.1", "hostname")
 )
 
