@@ -15,6 +15,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/rpc"
 	"os"
 	"os/signal"
 	"short_url/store"
@@ -23,9 +24,14 @@ import (
 )
 
 var (
+	// 启动端口
 	port = flag.String("port", ":9009", "http listen port")
+	// 启动文件-持久化存储映射kv
 	file = flag.String("file", "store.json", "data store filename")
+	// host地址
 	host = flag.String("host", "127.0.0.1", "hostname")
+	// 是否开启rpc
+	rpcEnabled = flag.Bool("rpc", true, "enable rpc service")
 )
 
 //var urlStore = store.NewURLStore("store.gob")
@@ -71,6 +77,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	// 开启 http 服务
 	go func() {
 		log.Printf("ListenAndServe: %s%s", *host, *port)
 		err := httpSvr.ListenAndServe()
@@ -81,6 +88,12 @@ func main() {
 			log.Printf("Http serve close: %v \n", err)
 		}
 	}()
+
+	// 开启 rpc 服务
+	if *rpcEnabled {
+		rpc.RegisterName("URLStore", urlStore)
+		rpc.HandleHTTP()
+	}
 
 	Watch(func() error {
 		ctx, cancel := context.WithTimeout(context.Background(),5*time.Second)
@@ -110,29 +123,38 @@ func Watch(fns ...func() error) {
 
 // curl POST '127.0.0.1:9009/put' --form 'url="hello"'
 func Put(w http.ResponseWriter, r *http.Request) {
-	// @TODO 测试优雅退出
-	time.Sleep(3 * time.Second)
-
+	var key string
+	// 测试优雅退出
+	// time.Sleep(3 * time.Second)
 	url := r.FormValue("url")
 	if url == "" {
 		fmt.Fprintf(w, "url can not be ''")
 		return
 	}
-	key := urlStore.Put(url)
+	if err := urlStore.Put(&url, &key); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprintf(w, "Successed shortURL(short: long) is %s: %v \n", key, url)
 }
 
 // curl POST '127.0.0.1:9009/get' --form 'key="hello"'
 func Get(w http.ResponseWriter, r *http.Request) {
-	key := r.FormValue("key")
+	var (
+		key = r.FormValue("key")
+		url string
+	)
 
 	if key == "" {
 		fmt.Fprintf(w, "key can not be ''")
 		return
 	}
-	longURL := urlStore.Get(key)
+	if err := urlStore.Get(&key, &url); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	fmt.Fprintf(w, "Successed shortURL(short: long) is %s: %v \n", key, longURL)
+	fmt.Fprintf(w, "Successed shortURL(short: long) is %s: %v \n", key, url)
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
@@ -161,11 +183,15 @@ func Index(w http.ResponseWriter, r *http.Request) {
 }
 
 func Redirect(w http.ResponseWriter, r *http.Request) {
+	var url string
 	key := r.URL.Path[1:]
 	if key == "" {
 		return
 	}
-	url := urlStore.Get(key)
+	if err := urlStore.Get(&key, &url); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if url == "" {
 		http.NotFound(w, r)
 		return
