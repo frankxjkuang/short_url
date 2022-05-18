@@ -10,6 +10,7 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -47,23 +48,27 @@ func NewURLStore(fileName string) *URLStore {
 }
 
 // Get 使用短链获取长链
-func (s *URLStore) Get(key string) string {
+func (s *URLStore) Get(key, url *string) error {
 	s.RLock()
 	defer s.RUnlock()
-	return s.urls[key]
+	if u, ok := s.urls[*key]; ok {
+		*url = u
+		return nil
+	}
+	return errors.New("Key does not exist")
 }
 
 // Set 设置短、长链的映射关系
-func (s *URLStore) Set(key, url string) bool {
+func (s *URLStore) Set(key, url *string) error {
 	s.Lock()
 	defer s.Unlock()
-	_, ok := s.urls[key]
+	_, ok := s.urls[*key]
 	// 已经存在
 	if ok {
-		return false
+		return errors.New("Key already exists")
 	}
-	s.urls[key] = url
-	return true
+	s.urls[*key] = *url
+	return nil
 }
 
 // Delete 删除短链
@@ -82,16 +87,15 @@ func (s *URLStore) Count() int {
 }
 
 // Put 新增短、长链的映射关系
-func (s *URLStore) Put(url string) string {
+func (s *URLStore) Put(url, key *string) error {
 	for {
-		key := genKey(s.Count())
-		if s.Set(key, url) {
-			s.record <- record{key, url}
-			return key
+		*key = genKey(s.Count())
+		if err := s.Set(key, url); err == nil {
+			s.record <- record{*key, *url}
+			break
 		}
 	}
-	// shouldn’t get here
-	panic("put failed")
+	return nil
 }
 
 // GetUrls 获取短长链映射
@@ -111,7 +115,7 @@ func (s *URLStore) load(fileName string) error {
 	for err == nil {
 		r := record{}
 		if err = b.Decode(&r); err == nil {
-			s.Set(r.Key, r.URL)
+			s.Set(&r.Key, &r.URL)
 		}
 	}
 	// 数据读完
