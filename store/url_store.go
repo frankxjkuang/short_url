@@ -39,10 +39,13 @@ func NewURLStore(fileName string) *URLStore {
 		urlStore = new(URLStore)
 		urlStore.urls = make(map[string]string)
 		urlStore.record = make(chan record, recordQueueMaxLength)
-		if err := urlStore.load(fileName); err != nil {
-			panic(fmt.Sprintf("NewURLStore fileName[%s] failed err: [%v]", fileName, err))
+
+		if fileName != "" {
+			if err := urlStore.load(fileName); err != nil {
+				panic(fmt.Sprintf("NewURLStore fileName[%s] failed err: [%v]", fileName, err))
+			}
+			go urlStore.saveLoop(fileName)
 		}
-		go urlStore.saveLoop(fileName)
 	})
 	return urlStore
 }
