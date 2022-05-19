@@ -31,17 +31,24 @@ var (
 	// host地址
 	host = flag.String("host", "127.0.0.1", "hostname")
 	// 是否开启rpc
-	rpcEnabled = flag.Bool("rpc", true, "enable rpc service")
+	rpcEnabled = flag.Bool("rpc", false, "enable rpc service")
+	// 以master服务启动服务
+	masterAddr = flag.String("master", "127.0.0.1:9009", "rpc master address")
 )
 
-//var urlStore = store.NewURLStore("store.gob")
-var urlStore *store.URLStore
+var urlStore store.Store
 
 type myHandleFunc func(http.ResponseWriter, *http.Request)
 
 func init() {
 	flag.Parse()
-	urlStore = store.NewURLStore(*file)
+	//urlStore = store.NewURLStore(*file)
+
+	if *masterAddr != "" {
+		urlStore = store.NewProxyStore(*masterAddr)
+	} else {
+		urlStore = store.NewURLStore(*file)
+	}
 }
 
 func logPanics(m myHandleFunc) myHandleFunc {
@@ -69,7 +76,7 @@ func main() {
 	// curl POST '127.0.0.1:9009/get' --form 'url="hello"'
 	http.HandleFunc("/get", logPanics(Get))
 
-	http.HandleFunc("/delete", logPanics(Delete))
+	//http.HandleFunc("/delete", logPanics(Delete))
 
 	httpSvr := http.Server{
 		Addr:              *host + *port,
@@ -100,7 +107,7 @@ func main() {
 		defer cancel()
 		return httpSvr.Shutdown(ctx)
 	}, func() error {
-		urlStore.Close()
+		//urlStore.Close()
 		return nil
 	})
 }
@@ -157,17 +164,17 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Successed shortURL(short: long) is %s: %v \n", key, url)
 }
 
-func Delete(w http.ResponseWriter, r *http.Request) {
-	key := r.FormValue("key")
-	if key == "" {
-		w.Header().Set("Content-Type", "text/html")
-		return
-	}
-	urlStore.Delete(key)
-	w.Header().Set("Content-Type", "application/json")
-	// 重定向刷新回去
-	http.Redirect(w, r, fmt.Sprintf("%s%s", *host, *port), http.StatusTemporaryRedirect)
-}
+//func Delete(w http.ResponseWriter, r *http.Request) {
+//	key := r.FormValue("key")
+//	if key == "" {
+//		w.Header().Set("Content-Type", "text/html")
+//		return
+//	}
+//	urlStore.Delete(key)
+//	w.Header().Set("Content-Type", "application/json")
+//	// 重定向刷新回去
+//	http.Redirect(w, r, fmt.Sprintf("%s%s", *host, *port), http.StatusTemporaryRedirect)
+//}
 
 func Index(w http.ResponseWriter, r *http.Request) {
 	//解析指定文件生成模板对象
@@ -176,7 +183,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	//利用给定数据渲染模板，并将结果写入
-	err = tmpl.Execute(w, urlStore.GetUrls())
+	//err = tmpl.Execute(w, urlStore.GetUrls())
+	err = tmpl.Execute(w, map[string]string{"1": "2"})
 	if err != nil {
 		log.Fatal(err)
 	}
