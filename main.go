@@ -25,7 +25,7 @@ import (
 
 var (
 	// 启动端口
-	port = flag.String("port", ":9009", "http listen port")
+	port = flag.String("port", ":8080", "http listen port")
 	// 启动文件-持久化存储映射kv
 	file = flag.String("file", "store.json", "data store filename")
 	// host地址
@@ -33,7 +33,7 @@ var (
 	// 是否开启rpc
 	rpcEnabled = flag.Bool("rpc", false, "enable rpc service")
 	// 以master服务启动服务
-	masterAddr = flag.String("master", "127.0.0.1:9009", "rpc master address")
+	masterAddr = flag.String("master", "", "rpc master address")
 )
 
 var urlStore store.Store
@@ -73,7 +73,6 @@ func main() {
 	http.HandleFunc("/put", logPanics(Put))
 
 	// 获取
-	// curl POST '127.0.0.1:9009/get' --form 'url="hello"'
 	http.HandleFunc("/get", logPanics(Get))
 
 	//http.HandleFunc("/delete", logPanics(Delete))
@@ -86,7 +85,7 @@ func main() {
 
 	// 开启 http 服务
 	go func() {
-		log.Printf("ListenAndServe: %s%s", *host, *port)
+		log.Printf("Starting ListenAndServe: %s%s", *host, *port)
 		err := httpSvr.ListenAndServe()
 		if err == http.ErrServerClosed {
 			err = nil
@@ -98,7 +97,7 @@ func main() {
 
 	// 开启 rpc 服务
 	if *rpcEnabled {
-		rpc.RegisterName("URLStore", urlStore)
+		rpc.RegisterName("Store", urlStore)
 		rpc.HandleHTTP()
 	}
 
@@ -128,7 +127,7 @@ func Watch(fns ...func() error) {
 	log.Println("Serve exit.")
 }
 
-// curl POST '127.0.0.1:9009/put' --form 'url="hello"'
+// Put 新增：curl -X POST '127.0.0.1:8080/put' --form 'url=https://www.kxjun.top'
 func Put(w http.ResponseWriter, r *http.Request) {
 	var key string
 	// 测试优雅退出
@@ -145,7 +144,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Successed shortURL(short: long) is %s: %v \n", key, url)
 }
 
-// curl POST '127.0.0.1:9009/get' --form 'key="hello"'
+// Get 获取：curl -X POST '127.0.0.1:8080/get' --form 'key=1'
 func Get(w http.ResponseWriter, r *http.Request) {
 	var (
 		key = r.FormValue("key")
