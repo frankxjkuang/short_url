@@ -42,7 +42,6 @@ type myHandleFunc func(http.ResponseWriter, *http.Request)
 
 func init() {
 	flag.Parse()
-	//urlStore = store.NewURLStore(*file)
 
 	if *masterAddr != "" {
 		urlStore = store.NewProxyStore(*masterAddr)
@@ -63,7 +62,7 @@ func logPanics(m myHandleFunc) myHandleFunc {
 }
 
 func main() {
-	// 首页
+	// 首页：展示每个服务的短链映射
 	http.HandleFunc("/index", Index)
 
 	// 重定向
@@ -74,8 +73,6 @@ func main() {
 
 	// 获取
 	http.HandleFunc("/get", logPanics(Get))
-
-	//http.HandleFunc("/delete", logPanics(Delete))
 
 	httpSvr := http.Server{
 		Addr:              *host + *port,
@@ -102,15 +99,16 @@ func main() {
 	}
 
 	Watch(func() error {
-		ctx, cancel := context.WithTimeout(context.Background(),5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		return httpSvr.Shutdown(ctx)
 	}, func() error {
-		//urlStore.Close()
+		// 继续添加需要执行的函数
 		return nil
 	})
 }
 
+// Watch 增加监听幸好需要执行的函数
 func Watch(fns ...func() error) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
@@ -163,27 +161,14 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Successed shortURL(short: long) is %s: %v \n", key, url)
 }
 
-//func Delete(w http.ResponseWriter, r *http.Request) {
-//	key := r.FormValue("key")
-//	if key == "" {
-//		w.Header().Set("Content-Type", "text/html")
-//		return
-//	}
-//	urlStore.Delete(key)
-//	w.Header().Set("Content-Type", "application/json")
-//	// 重定向刷新回去
-//	http.Redirect(w, r, fmt.Sprintf("%s%s", *host, *port), http.StatusTemporaryRedirect)
-//}
-
 func Index(w http.ResponseWriter, r *http.Request) {
-	//解析指定文件生成模板对象
+	// 解析指定文件生成模板对象
 	tmpl, err := template.ParseFiles("./html/index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
-	//利用给定数据渲染模板，并将结果写入
-	//err = tmpl.Execute(w, urlStore.GetUrls())
-	err = tmpl.Execute(w, map[string]string{"1": "2"})
+	// 利用给定数据渲染模板，并将结果写入
+	err = tmpl.Execute(w, urlStore.GetUrls())
 	if err != nil {
 		log.Fatal(err)
 	}

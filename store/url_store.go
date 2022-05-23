@@ -74,14 +74,6 @@ func (s *URLStore) Set(key, url *string) error {
 	return nil
 }
 
-// Delete 删除短链
-func (s *URLStore) Delete(key string) {
-	// TODO：删除会导致重新生成key重复，暂时不用
-	s.Lock()
-	defer s.Unlock()
-	delete(s.urls, key)
-}
-
 // Count 获取映射Store的大小
 func (s *URLStore) Count() int {
 	s.RLock()

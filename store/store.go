@@ -11,4 +11,5 @@ package store
 type Store interface {
 	Put(url, key *string) error
 	Get(key, url *string) error
+	GetUrls() map[string]string
 }

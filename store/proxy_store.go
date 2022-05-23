@@ -47,3 +47,8 @@ func (s *ProxyStore) Put(url, key *string) error {
 	s.urls.Set(key, url) // update local cache
 	return nil
 }
+
+// GetUrls 获取短长链映射
+func (s *ProxyStore) GetUrls() map[string]string {
+	return s.urls.urls
+}
